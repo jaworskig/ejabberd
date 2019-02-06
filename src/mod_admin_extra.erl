@@ -70,7 +70,7 @@
 	 srg_get_members/2, srg_user_add/4, srg_user_del/4,
 
 	 % Send message
-	 send_message/5, send_stanza/3, send_stanza_c2s/4,
+	 send_message/6, send_stanza/3, send_stanza_c2s/4,
 
 	 % Privacy list
 	 privacy_set/3,
@@ -1469,6 +1469,7 @@ send_message(Type, From, To, Subject, Body, Thread) ->
 
 build_packet(Type, Subject, Body, FromJID, ToJID, Thread) ->
     #message{type = misc:binary_to_atom(Type),
+		 thread = #message_thread{data = <<1>>, parent = Thread},
 	     body = xmpp:mk_text(Body),
 	     from = FromJID,
 	     to = ToJID,
