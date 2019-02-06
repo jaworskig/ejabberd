@@ -707,11 +707,11 @@ get_commands_spec() ->
 			desc = "Send a message to a local or remote bare of full JID",
 			module = ?MODULE, function = send_message,
 			args = [{type, binary}, {from, binary}, {to, binary},
-				{subject, binary}, {body, binary}],
+				{subject, binary}, {body, binary}, {thread, binary}],
 			args_example = [<<"headline">>, <<"admin@localhost">>, <<"user1@localhost">>,
-				<<"Restart">>, <<"In 5 minutes">>],
+				<<"Restart">>, <<"In 5 minutes">>, <<"threadId">>],
 			args_desc = ["Message type: normal, chat, headline", "Sender JID",
-				"Receiver JID", "Subject, or empty string", "Body"],
+				"Receiver JID", "Subject, or empty string", "Body", "ThreadId"],
 			result = {res, rescode}},
      #ejabberd_commands{name = send_stanza_c2s, tags = [stanza],
 			desc = "Send a stanza as if sent from a c2s session",
@@ -1459,15 +1459,15 @@ srg_user_del(User, Host, Group, GroupHost) ->
 
 %% @doc Send a message to a Jabber account.
 %% @spec (Type::binary(), From::binary(), To::binary(), Subject::binary(), Body::binary()) -> ok
-send_message(Type, From, To, Subject, Body) ->
+send_message(Type, From, To, Subject, Body, Thread) ->
     FromJID = jid:decode(From),
     ToJID = jid:decode(To),
-    Packet = build_packet(Type, Subject, Body, FromJID, ToJID),
+    Packet = build_packet(Type, Subject, Body, FromJID, ToJID, Thread),
     State1 = #{jid => FromJID},
     ejabberd_hooks:run_fold(user_send_packet, FromJID#jid.lserver, {Packet, State1}, []),
     ejabberd_router:route(xmpp:set_from_to(Packet, FromJID, ToJID)).
 
-build_packet(Type, Subject, Body, FromJID, ToJID) ->
+build_packet(Type, Subject, Body, FromJID, ToJID, Thread) ->
     #message{type = misc:binary_to_atom(Type),
 	     body = xmpp:mk_text(Body),
 	     from = FromJID,
