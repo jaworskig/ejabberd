@@ -70,7 +70,7 @@
 	 srg_get_members/2, srg_user_add/4, srg_user_del/4,
 
 	 % Send message
-	 send_message/7, send_stanza/3, send_stanza_c2s/4,
+	 send_message/6, send_stanza/3, send_stanza_c2s/4,
 
 	 % Privacy list
 	 privacy_set/3,
@@ -707,7 +707,7 @@ get_commands_spec() ->
 			desc = "Send a message to a local or remote bare of full JID",
 			module = ?MODULE, function = send_message,
 			args = [{type, binary}, {from, binary}, {to, binary},
-				{subject, binary}, {body, binary}, {thread, binary}, {thread_parent, binary}],
+				{subject, binary}, {body, binary}, {thread_parent, binary}],
 			args_example = [<<"headline">>, <<"admin@localhost">>, <<"user1@localhost">>,
 				<<"Restart">>, <<"In 5 minutes">>, <<"threadId">>, <<"thread parent Id">>],
 			args_desc = ["Message type: normal, chat, headline", "Sender JID",
@@ -1458,22 +1458,23 @@ srg_user_del(User, Host, Group, GroupHost) ->
 %%%
 
 %% @doc Send a message to a Jabber account.
-%% @spec (Type::binary(), From::binary(), To::binary(), Subject::binary(), Body::binary()) -> ok
-send_message(Type, From, To, Subject, Body, Thread, ThreadParent) ->
+%% @spec (Type::binary(), From::binary(), To::binary(), Subject::binary(), Body::binary(), ThreadParent::binary() -> ok
+send_message(Type, From, To, Subject, Body, ThreadParent) ->
     FromJID = jid:decode(From),
     ToJID = jid:decode(To),
-    Packet = build_packet(Type, Subject, Body, FromJID, ToJID, Thread, ThreadParent),
+	MsgId = p1_rand:get_string(),
+    Packet = build_packet(Type, Subject, Body, FromJID, ToJID, MsgId, ThreadParent),
     State1 = #{jid => FromJID},
     ejabberd_hooks:run_fold(user_send_packet, FromJID#jid.lserver, {Packet, State1}, []),
     ejabberd_router:route(xmpp:set_from_to(Packet, FromJID, ToJID)).
 
-build_packet(Type, Subject, Body, FromJID, ToJID, Thread, ThreadParent) ->
+build_packet(Type, Subject, Body, FromJID, ToJID, MsgId, ThreadParent) ->
     #message{type = misc:binary_to_atom(Type),
-		 thread = #message_thread{data = Thread, parent = ThreadParent},
+		 thread = #message_thread{data = MsgId, parent = ThreadParent},
 	     body = xmpp:mk_text(Body),
 	     from = FromJID,
 	     to = ToJID,
-	     id = p1_rand:get_string(),
+	     id = MsgId,
 	     subject = xmpp:mk_text(Subject)}.
 
 send_stanza(FromString, ToString, Stanza) ->
