@@ -173,6 +173,8 @@ get_commands_spec() ->
 		       result = {res, rescode}},
      #ejabberd_commands{name = rooms_unused_list, tags = [muc],
 		       desc = "List the rooms that are unused for many days in host",
+		       longdesc = "The room recent history is used, so it's recommended "
+			    " to wait a few days after service start before running this.",
 		       module = ?MODULE, function = rooms_unused_list,
 		       args_desc = ["Server host", "Number of days"],
 		       args_example = ["example.com", 31],
@@ -182,6 +184,8 @@ get_commands_spec() ->
 		       result = {rooms, {list, {room, string}}}},
      #ejabberd_commands{name = rooms_unused_destroy, tags = [muc],
 		       desc = "Destroy the rooms that are unused for many days in host",
+		       longdesc = "The room recent history is used, so it's recommended "
+			    " to wait a few days after service start before running this.",
 		       module = ?MODULE, function = rooms_unused_destroy,
 		       args_desc = ["Server host", "Number of days"],
 		       args_example = ["example.com", 31],
@@ -736,7 +740,7 @@ muc_unused(Action, ServerHost, Last_allowed) ->
     Rooms_all = get_rooms(ServerHost),
 
     %% Decide which ones pass the requirements
-    Rooms_pass = decide_rooms(Rooms_all, Last_allowed),
+    Rooms_pass = decide_rooms(Rooms_all, ServerHost, Last_allowed),
 
     Num_rooms_all = length(Rooms_all),
     Num_rooms_pass = length(Rooms_pass),
@@ -767,11 +771,11 @@ get_room_state(Room_pid) ->
 %%---------------
 %% Decide
 
-decide_rooms(Rooms, Last_allowed) ->
-    Decide = fun(R) -> decide_room(R, Last_allowed) end,
+decide_rooms(Rooms, ServerHost, Last_allowed) ->
+    Decide = fun(R) -> decide_room(R, ServerHost, Last_allowed) end,
     lists:filter(Decide, Rooms).
 
-decide_room({_Room_name, _Host, Room_pid}, Last_allowed) ->
+decide_room({_Room_name, _Host, Room_pid}, ServerHost, Last_allowed) ->
     C = get_room_config(Room_pid),
     Persistent = C#config.persistent,
 
@@ -784,7 +788,10 @@ decide_room({_Room_name, _Host, Room_pid}, Last_allowed) ->
     History = (S#state.history)#lqueue.queue,
     Ts_now = calendar:universal_time(),
     Ts_uptime = uptime_seconds(),
+    HistorySize = gen_mod:get_module_opt(ServerHost, mod_muc, history_size),
     {Has_hist, Last} = case p1_queue:is_empty(History) of
+			   true when HistorySize == 0 ->
+			       {false, 0};
 			   true ->
 			       {false, Ts_uptime};
 			   false ->
