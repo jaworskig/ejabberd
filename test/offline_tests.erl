@@ -147,7 +147,7 @@ master_slave_cases() ->
       master_slave_test(send_all)]}.
 
 flex_master(Config) ->
-    send_messages(Config, 6),
+    send_messages(Config, 7),
     disconnect(Config).
 
 flex_slave(Config) ->
